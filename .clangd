@@ -1,0 +1,20 @@
+CompileFlags:
+  Compiler: /Users/oguzgundogdu/.platformio/packages/toolchain-xtensa-esp32/bin/xtensa-esp32-elf-gcc
+  CompilationDatabase: .pio/build/esp32dev/compile_commands.json
+  Add:
+    - -DXCHAL_HAVE_LOOPS
+    - -std=gnu++11
+    - -D_READ_WRITE_RETURN_TYPE
+    - -fms-extensions
+    - -fgnu-keywords
+    - -Wno-gnu-anonymous-struct
+    - -Wno-nested-anon-types
+    - -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+  Remove:
+    - -mdisable-hardware-atomics
+    - -fstrict-volatile-bitfields
+    - -fno-tree-switch-conversion
+    - -mlongcalls
+Diagnostics:
+  Suppress:
+    - clang-diagnostic-error
