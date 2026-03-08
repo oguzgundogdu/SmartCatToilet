@@ -1,20 +1,19 @@
 CompileFlags:
-  Compiler: /Users/oguzgundogdu/.platformio/packages/toolchain-xtensa-esp32/bin/xtensa-esp32-elf-gcc
-  CompilationDatabase: .pio/build/esp32dev/compile_commands.json
-  Add:
-    - -DXCHAL_HAVE_LOOPS
-    - -std=gnu++11
-    - -D_READ_WRITE_RETURN_TYPE
-    - -fms-extensions
-    - -fgnu-keywords
-    - -Wno-gnu-anonymous-struct
-    - -Wno-nested-anon-types
-    - -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+  CompilationDatabase: .pio/build/esp32dev/
   Remove:
+    - -fno-tree-switch-conversion
+    - -fno-builtin-stpcpy
+    - -fno-builtin-bzero
     - -mdisable-hardware-atomics
     - -fstrict-volatile-bitfields
-    - -fno-tree-switch-conversion
-    - -mlongcalls
+    - -I/Users/oguzgundogdu/.platformio/packages/toolchain-xtensa-esp-elf/picolibc/include
+  Add:
+    - -DWIFI_SSID=\"placeholder\"
+    - -DWIFI_PASSWORD=\"placeholder\"
+    - -DHA_WEBHOOK_URL=\"placeholder\"
+    - -Wno-unknown-warning-option
+    - -Wno-unused-command-line-argument
 Diagnostics:
+  UnusedIncludes: None
   Suppress:
-    - clang-diagnostic-error
+    - drv_unknown_argument

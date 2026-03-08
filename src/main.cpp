@@ -4,11 +4,17 @@
 #include <WiFi.h>
 #include <time.h>
 
-// ====== USER CONFIG ======
-const char *WIFI_SSID = "bo";
-const char *WIFI_PASSWORD = "REDACTED_PASSWORD";
-const char *HA_WEBHOOK_URL = "REDACTED_WEBHOOK_URL";
-// ==========================
+// ====== USER CONFIG (defined via secrets.ini build_flags) ======
+#ifndef WIFI_SSID
+#error "WIFI_SSID not defined. Create secrets.ini with build_flags."
+#endif
+#ifndef WIFI_PASSWORD
+#error "WIFI_PASSWORD not defined. Create secrets.ini with build_flags."
+#endif
+#ifndef HA_WEBHOOK_URL
+#error "HA_WEBHOOK_URL not defined. Create secrets.ini with build_flags."
+#endif
+// ==============================================================
 
 constexpr gpio_num_t ENTRY_PIN = GPIO_NUM_32; // Reed switch (entry), active LOW
 constexpr gpio_num_t EXIT_PIN = GPIO_NUM_33;  // IR sensor (exit), active LOW

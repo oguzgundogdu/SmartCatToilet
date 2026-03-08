@@ -3,3 +3,5 @@
 build/*
 *.code-workspace
 .cache/*
+.claude
+secrets.ini
