@@ -8,9 +8,9 @@ CompileFlags:
     - -fstrict-volatile-bitfields
     - -I/Users/oguzgundogdu/.platformio/packages/toolchain-xtensa-esp-elf/picolibc/include
   Add:
-    - -DWIFI_SSID=\"placeholder\"
-    - -DWIFI_PASSWORD=\"placeholder\"
-    - -DHA_WEBHOOK_URL=\"placeholder\"
+    - '-DWIFI_SSID="placeholder"'
+    - '-DWIFI_PASSWORD="placeholder"'
+    - '-DHA_WEBHOOK_URL="http://placeholder"'
     - -Wno-unknown-warning-option
     - -Wno-unused-command-line-argument
 Diagnostics:
