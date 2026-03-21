@@ -1,0 +1,198 @@
+# Cat Toilet - Home Assistant Automations
+# Import these via Settings → Automations & Scenes, or copy into automations.yaml
+
+- id: "1771673230815"
+  alias: Cat Toilet
+  description: Processes webhook events from the ESP32 cat toilet sensor
+  mode: single
+  triggers:
+    - trigger: webhook
+      allowed_methods:
+        - POST
+      local_only: true
+      webhook_id: cat_toilet
+      id: cat_toilet
+  conditions: []
+  actions:
+    # --- CAT_ENTERED event ---
+    - if:
+        - condition: template
+          value_template: "{{ trigger.json.event == 'CAT_ENTERED' }}"
+      then:
+        - action: input_datetime.set_datetime
+          target:
+            entity_id: input_datetime.cat_toilet_last_entered
+          data:
+            datetime: >-
+              {{ (trigger.json.ts | int(0))
+                 | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
+        - action: notify.mobile_app_iphone_13
+          data:
+            title: Cat Toilet
+            message: Cat entered.
+
+    # --- CAT_SESSION event ---
+    - if:
+        - condition: template
+          value_template: "{{ trigger.json.event == 'CAT_SESSION' }}"
+      then:
+        # Store last duration
+        - action: input_number.set_value
+          target:
+            entity_id: input_number.cat_toilet_last_duration
+          data:
+            value: "{{ trigger.json.duration_sec | int(0) }}"
+
+        # Update entered timestamp (if valid)
+        - if:
+            - condition: template
+              value_template: "{{ (trigger.json.entered_at | int(0)) > 0 }}"
+          then:
+            - action: input_datetime.set_datetime
+              target:
+                entity_id: input_datetime.cat_toilet_last_entered
+              data:
+                datetime: >-
+                  {{ (trigger.json.entered_at | int(0))
+                     | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
+
+        # Update exited timestamp (if valid)
+        - if:
+            - condition: template
+              value_template: "{{ (trigger.json.exited_at | int(0)) > 0 }}"
+          then:
+            - action: input_datetime.set_datetime
+              target:
+                entity_id: input_datetime.cat_toilet_last_exited
+              data:
+                datetime: >-
+                  {{ (trigger.json.exited_at | int(0))
+                     | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
+
+        # Increment daily visit counter
+        - action: counter.increment
+          target:
+            entity_id: counter.cat_toilet_daily_count
+
+        # Track shortest session of the day
+        - if:
+            - condition: template
+              value_template: >-
+                {{ states('input_number.cat_toilet_shortest_duration') | float(0) == 0
+                   or trigger.json.duration_sec | int(0)
+                      < states('input_number.cat_toilet_shortest_duration') | float(0) }}
+          then:
+            - action: input_number.set_value
+              target:
+                entity_id: input_number.cat_toilet_shortest_duration
+              data:
+                value: "{{ trigger.json.duration_sec | int(0) }}"
+
+        # Push notification with duration
+        - action: notify.mobile_app_iphone_13
+          data:
+            title: Cat Toilet
+            message: "Cat Exited. Duration: {{ trigger.json.duration_sec | int(0) }}s"
+
+        # Anomaly alert: too many visits (> 1.5x rolling average)
+        - if:
+            - condition: template
+              value_template: >-
+                {{ states('input_number.cat_toilet_avg_daily_visits') | float(0) > 0
+                   and states('counter.cat_toilet_daily_count') | int(0)
+                       > (states('input_number.cat_toilet_avg_daily_visits') | float(0) * 1.5) }}
+          then:
+            - action: notify.notify
+              data:
+                title: Cat Toilet Alert
+                message: >-
+                  Anomaly detected: {{ states('counter.cat_toilet_daily_count') }} visits today,
+                  which is above the average of
+                  {{ states('input_number.cat_toilet_avg_daily_visits') | round(1) }}.
+                  This could indicate a health issue.
+
+        # Anomaly alert: unusually short session (< 0.5x avg shortest)
+        - if:
+            - condition: template
+              value_template: >-
+                {{ states('input_number.cat_toilet_avg_shortest_duration') | float(0) > 0
+                   and trigger.json.duration_sec | int(0)
+                       < (states('input_number.cat_toilet_avg_shortest_duration') | float(0) * 0.5) }}
+          then:
+            - action: notify.notify
+              data:
+                title: Cat Toilet Alert
+                message: >-
+                  Anomaly detected: Session lasted only {{ trigger.json.duration_sec }}s,
+                  which is much shorter than the average shortest of
+                  {{ states('input_number.cat_toilet_avg_shortest_duration') | round(1) }}s.
+
+- id: "1773075765000"
+  alias: Reset Cat Toilet Daily Stats
+  description: Stores daily stats in history, computes rolling averages, then resets
+  mode: single
+  triggers:
+    - trigger: time
+      at: "00:00:00"
+  conditions: []
+  actions:
+    # Append today's stats to 14-day history (format: MMDD:visits:shortest)
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.cat_toilet_history
+      data:
+        value: >-
+          {% set today = now().strftime('%m%d') %}
+          {% set v = states('counter.cat_toilet_daily_count') | int(0) %}
+          {% set s = states('input_number.cat_toilet_shortest_duration') | int(0) %}
+          {% set entry = today ~ ':' ~ v ~ ':' ~ s %}
+          {% set old = states('input_text.cat_toilet_history') %}
+          {% if old in ['unknown', ''] %}
+            {{ entry }}
+          {% else %}
+            {% set entries = (entry ~ ',' ~ old).split(',')[:14] %}
+            {{ entries | join(',') }}
+          {% endif %}
+
+    # Update rolling average daily visits (EMA: 30% today / 70% history)
+    - action: input_number.set_value
+      target:
+        entity_id: input_number.cat_toilet_avg_daily_visits
+      data:
+        value: >-
+          {% set today = states('counter.cat_toilet_daily_count') | int(0) %}
+          {% set avg = states('input_number.cat_toilet_avg_daily_visits') | float(0) %}
+          {% if avg == 0 %}{{ today }}{% else %}{{ (0.3 * today + 0.7 * avg) | round(1) }}{% endif %}
+
+    # Update rolling average shortest duration (only if there was a session today)
+    - if:
+        - condition: template
+          value_template: "{{ states('input_number.cat_toilet_shortest_duration') | float(0) > 0 }}"
+      then:
+        - action: input_number.set_value
+          target:
+            entity_id: input_number.cat_toilet_avg_shortest_duration
+          data:
+            value: >-
+              {% set today = states('input_number.cat_toilet_shortest_duration') | float(0) %}
+              {% set avg = states('input_number.cat_toilet_avg_shortest_duration') | float(0) %}
+              {% if avg == 0 %}{{ today }}{% else %}{{ (0.3 * today + 0.7 * avg) | round(1) }}{% endif %}
+
+    # Reset daily counter
+    - action: counter.reset
+      target:
+        entity_id: counter.cat_toilet_daily_count
+
+    # Reset shortest duration
+    - action: input_number.set_value
+      target:
+        entity_id: input_number.cat_toilet_shortest_duration
+      data:
+        value: 0
+
+    # Update date picker to today
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.cat_toilet_date_picker
+      data:
+        date: "{{ now().strftime('%Y-%m-%d') }}"

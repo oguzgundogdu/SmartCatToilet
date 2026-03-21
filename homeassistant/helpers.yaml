@@ -1,0 +1,70 @@
+# Cat Toilet - Home Assistant Helpers
+# These helpers must be created in HA: Settings → Devices & Services → Helpers
+
+input_datetime:
+  cat_toilet_last_entered:
+    name: Cat Toilet Last Entered
+    has_date: true
+    has_time: true
+
+  cat_toilet_last_exited:
+    name: Cat Toilet Last Exited
+    has_date: true
+    has_time: true
+
+  cat_toilet_date_picker:
+    name: Cat Toilet Date Picker
+    has_date: true
+    has_time: false
+    icon: mdi:calendar
+
+input_number:
+  cat_toilet_last_duration:
+    name: Cat Toilet Last Duration
+    min: 0
+    max: 7200
+    step: 1
+    mode: box
+    unit_of_measurement: s
+
+  cat_toilet_shortest_duration:
+    name: Cat Toilet Shortest Duration
+    min: 0
+    max: 86400
+    step: 1
+    mode: slider
+    unit_of_measurement: s
+    icon: mdi:timer-outline
+
+  cat_toilet_avg_daily_visits:
+    name: Cat Toilet Avg Daily Visits
+    min: 0
+    max: 100
+    step: 0.1
+    mode: slider
+    icon: mdi:chart-line
+
+  cat_toilet_avg_shortest_duration:
+    name: Cat Toilet Avg Shortest Duration
+    min: 0
+    max: 86400
+    step: 0.1
+    mode: slider
+    unit_of_measurement: s
+    icon: mdi:chart-timeline-variant
+
+input_text:
+  cat_toilet_history:
+    name: Cat Toilet History
+    min: 0
+    max: 255
+    mode: text
+    icon: mdi:database
+
+counter:
+  cat_toilet_daily_count:
+    name: Cat Toilet Daily Count
+    initial: 0
+    step: 1
+    minimum: 0
+    icon: mdi:counter
