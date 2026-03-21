@@ -94,13 +94,14 @@
             title: Cat Toilet
             message: "Cat Exited. Duration: {{ trigger.json.duration_sec | int(0) }}s"
 
-        # Anomaly alert: too many visits (> 1.5x rolling average)
+        # Anomaly alert: too many visits (avg + max(avg × 0.5, 5) buffer)
         - if:
             - condition: template
               value_template: >-
-                {{ states('input_number.cat_toilet_avg_daily_visits') | float(0) > 0
-                   and states('counter.cat_toilet_daily_count') | int(0)
-                       > (states('input_number.cat_toilet_avg_daily_visits') | float(0) * 1.5) }}
+                {% set avg = states('input_number.cat_toilet_avg_daily_visits') | float(0) %}
+                {% set buffer = [avg * 0.5, 5] | max %}
+                {{ avg > 0
+                   and states('counter.cat_toilet_daily_count') | int(0) > (avg + buffer) }}
           then:
             - action: notify.notify
               data:
@@ -110,22 +111,6 @@
                   which is above the average of
                   {{ states('input_number.cat_toilet_avg_daily_visits') | round(1) }}.
                   This could indicate a health issue.
-
-        # Anomaly alert: unusually short session (< 0.5x avg shortest)
-        - if:
-            - condition: template
-              value_template: >-
-                {{ states('input_number.cat_toilet_avg_shortest_duration') | float(0) > 0
-                   and trigger.json.duration_sec | int(0)
-                       < (states('input_number.cat_toilet_avg_shortest_duration') | float(0) * 0.5) }}
-          then:
-            - action: notify.notify
-              data:
-                title: Cat Toilet Alert
-                message: >-
-                  Anomaly detected: Session lasted only {{ trigger.json.duration_sec }}s,
-                  which is much shorter than the average shortest of
-                  {{ states('input_number.cat_toilet_avg_shortest_duration') | round(1) }}s.
 
 - id: "1773075765000"
   alias: Reset Cat Toilet Daily Stats
