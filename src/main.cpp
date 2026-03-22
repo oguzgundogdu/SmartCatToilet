@@ -168,6 +168,17 @@ static void sendSessionReliable(uint32_t exitedAtEpoch) {
                           /*timeSyncTimeoutMs=*/8000);
 }
 
+static void sendDeviceStarted() {
+  const uint32_t ts = epochNowOrZero();
+  const String payload =
+      String("{\"event\":\"DEVICE_STARTED\",\"ts\":") + String(ts) + String("}");
+
+  Serial.print("POST payload: ");
+  Serial.println(payload);
+  postJsonToHomeAssistant(payload, /*wifiTimeoutMs=*/5000,
+                          /*timeSyncTimeoutMs=*/4000);
+}
+
 static void goToDeepSleep() {
   digitalWrite(STATUS_LED_PIN, LOW);
   // Wake up when ENTRY_PIN goes LOW (reed triggered).
@@ -200,6 +211,7 @@ void setup() {
     waitingForExit = true;
   } else {
     Serial.println("BOOT: power on / reset");
+    sendDeviceStarted();
     goToDeepSleep();
   }
 }

@@ -26,7 +26,7 @@
             datetime: >-
               {{ (trigger.json.ts | int(0))
                  | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
-        - action: notify.mobile_app_iphone_13
+        - action: notify.notify
           data:
             title: Cat Toilet
             message: Cat entered.
@@ -89,7 +89,7 @@
                 value: "{{ trigger.json.duration_sec | int(0) }}"
 
         # Push notification with duration
-        - action: notify.mobile_app_iphone_13
+        - action: notify.notify
           data:
             title: Cat Toilet
             message: "Cat Exited. Duration: {{ trigger.json.duration_sec | int(0) }}s"
@@ -111,6 +111,16 @@
                   which is above the average of
                   {{ states('input_number.cat_toilet_avg_daily_visits') | round(1) }}.
                   This could indicate a health issue.
+
+    # --- DEVICE_STARTED event ---
+    - if:
+        - condition: template
+          value_template: "{{ trigger.json.event == 'DEVICE_STARTED' }}"
+      then:
+        - action: notify.notify
+          data:
+            title: Cat Toilet
+            message: Device started.
 
 - id: "1773075765000"
   alias: Reset Cat Toilet Daily Stats
