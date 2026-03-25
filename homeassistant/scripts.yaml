@@ -1,0 +1,50 @@
+# Cat Toilet - Home Assistant Scripts
+# Import via Settings → Scripts, or copy into scripts.yaml
+
+notify_with_retry:
+  alias: Notify with Retry
+  description: >-
+    Sends a push notification with retry. Uses a unique tag so that
+    retries replace (not duplicate) the original notification.
+    Handles intermittent WiFi/network drops gracefully.
+  mode: parallel
+  max: 10
+  fields:
+    title:
+      description: Notification title
+      selector:
+        text:
+    message:
+      description: Notification message
+      selector:
+        text:
+  sequence:
+    - variables:
+        notify_tag: "cat_toilet_{{ (as_timestamp(now()) * 1000) | int }}"
+    # Attempt 1
+    - action: notify.notify
+      data:
+        title: "{{ title }}"
+        message: "{{ message }}"
+        data:
+          tag: "{{ notify_tag }}"
+      continue_on_error: true
+    # Wait and retry — same tag replaces instead of duplicating
+    - delay: "00:00:15"
+    # Attempt 2
+    - action: notify.notify
+      data:
+        title: "{{ title }}"
+        message: "{{ message }}"
+        data:
+          tag: "{{ notify_tag }}"
+      continue_on_error: true
+    # Wait and final retry
+    - delay: "00:00:15"
+    # Attempt 3
+    - action: notify.notify
+      data:
+        title: "{{ title }}"
+        message: "{{ message }}"
+        data:
+          tag: "{{ notify_tag }}"

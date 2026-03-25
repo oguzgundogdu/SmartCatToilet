@@ -1,5 +1,8 @@
 # Cat Toilet - Home Assistant Automations
 # Import these via Settings → Automations & Scenes, or copy into automations.yaml
+#
+# NOTE: This file also requires the "notify_with_retry" script from scripts.yaml.
+# Import scripts via Settings → Scripts, or copy into scripts.yaml.
 
 - id: "1771673230815"
   alias: Cat Toilet
@@ -26,7 +29,7 @@
             datetime: >-
               {{ (trigger.json.ts | int(0))
                  | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
-        - action: notify.notify
+        - action: script.notify_with_retry
           data:
             title: Cat Toilet
             message: Cat entered.
@@ -89,7 +92,7 @@
                 value: "{{ trigger.json.duration_sec | int(0) }}"
 
         # Push notification with duration
-        - action: notify.notify
+        - action: script.notify_with_retry
           data:
             title: Cat Toilet
             message: "Cat Exited. Duration: {{ trigger.json.duration_sec | int(0) }}s"
@@ -103,7 +106,7 @@
                 {{ avg > 0
                    and states('counter.cat_toilet_daily_count') | int(0) > (avg + buffer) }}
           then:
-            - action: notify.notify
+            - action: script.notify_with_retry
               data:
                 title: Cat Toilet Alert
                 message: >-
@@ -117,7 +120,7 @@
         - condition: template
           value_template: "{{ trigger.json.event == 'DEVICE_STARTED' }}"
       then:
-        - action: notify.notify
+        - action: script.notify_with_retry
           data:
             title: Cat Toilet
             message: Device started.
