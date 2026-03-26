@@ -121,6 +121,14 @@ static bool postJsonToHomeAssistant(const String &jsonPayload,
 }
 
 static void sendEnteredBestEffort() {
+  // Connect WiFi and sync time BEFORE capturing the timestamp,
+  // otherwise the epoch is stale or zero after deep sleep.
+  if (!connectWiFiWithTimeoutMs(3500)) {
+    disconnectWiFi();
+    return;
+  }
+  ensureTimeSynced(2500);
+
   const uint32_t ts = epochNowOrZero();
   if (ts > 0) {
     enteredEpoch = ts;
@@ -129,11 +137,19 @@ static void sendEnteredBestEffort() {
   const String payload =
       String("{\"event\":\"CAT_ENTERED\",\"ts\":") + String(ts) + String("}");
 
-  // Entry event is best-effort: short WiFi timeout and short SNTP wait.
+  // Entry event is best-effort: WiFi already connected above.
   Serial.print("POST payload: ");
   Serial.println(payload);
-  postJsonToHomeAssistant(payload, /*wifiTimeoutMs=*/3500,
-                          /*timeSyncTimeoutMs=*/2500);
+
+  HTTPClient http;
+  WiFiClient client;
+  http.begin(client, HA_WEBHOOK_URL);
+  http.addHeader("Content-Type", "application/json");
+  const int httpResponseCode = http.POST(payload);
+  Serial.print("HA response code: ");
+  Serial.println(httpResponseCode);
+  http.end();
+  disconnectWiFi();
 }
 
 static void sendSessionReliable(uint32_t exitedAtEpoch) {
