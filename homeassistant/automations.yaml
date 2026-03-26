@@ -89,6 +89,39 @@
               data:
                 value: "{{ trigger.json.duration_sec | int(0) }}"
 
+        # Track longest session of the day
+        - if:
+            - condition: template
+              value_template: >-
+                {{ trigger.json.duration_sec | int(0)
+                   > states('input_number.cat_toilet_longest_duration') | float(0) }}
+          then:
+            - action: input_number.set_value
+              target:
+                entity_id: input_number.cat_toilet_longest_duration
+              data:
+                value: "{{ trigger.json.duration_sec | int(0) }}"
+
+        # Append session to today's weekday slot (rotating 7-day log)
+        - action: input_text.set_value
+          target:
+            entity_id: >-
+              {% set days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] %}
+              input_text.cat_toilet_sessions_{{ days[now().weekday()] }}
+          data:
+            value: >-
+              {% set days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] %}
+              {% set slot = 'input_text.cat_toilet_sessions_' ~ days[now().weekday()] %}
+              {% set entered = trigger.json.entered_at | int(0) %}
+              {% set dur = trigger.json.duration_sec | int(0) %}
+              {% set entry = entered | timestamp_custom('%H%M', true) ~ ':' ~ dur %}
+              {% set old = states(slot) %}
+              {% if old in ['unknown', ''] %}
+                {{ entry }}
+              {% else %}
+                {{ (old ~ ',' ~ entry)[-255:] }}
+              {% endif %}
+
         # Push notification with duration
         - action: notify.notify
           data:
@@ -132,7 +165,7 @@
       at: "00:00:00"
   conditions: []
   actions:
-    # Append today's stats to 14-day history (format: MMDD:visits:shortest)
+    # Append today's stats to 14-day history (format: MMDD:visits:shortest:longest)
     - action: input_text.set_value
       target:
         entity_id: input_text.cat_toilet_history
@@ -141,7 +174,8 @@
           {% set today = now().strftime('%m%d') %}
           {% set v = states('counter.cat_toilet_daily_count') | int(0) %}
           {% set s = states('input_number.cat_toilet_shortest_duration') | int(0) %}
-          {% set entry = today ~ ':' ~ v ~ ':' ~ s %}
+          {% set l = states('input_number.cat_toilet_longest_duration') | int(0) %}
+          {% set entry = today ~ ':' ~ v ~ ':' ~ s ~ ':' ~ l %}
           {% set old = states('input_text.cat_toilet_history') %}
           {% if old in ['unknown', ''] %}
             {{ entry }}
@@ -174,6 +208,20 @@
               {% set avg = states('input_number.cat_toilet_avg_shortest_duration') | float(0) %}
               {% if avg == 0 %}{{ today }}{% else %}{{ (0.3 * today + 0.7 * avg) | round(1) }}{% endif %}
 
+    # Update rolling average longest duration (only if there was a session today)
+    - if:
+        - condition: template
+          value_template: "{{ states('input_number.cat_toilet_longest_duration') | float(0) > 0 }}"
+      then:
+        - action: input_number.set_value
+          target:
+            entity_id: input_number.cat_toilet_avg_longest_duration
+          data:
+            value: >-
+              {% set today = states('input_number.cat_toilet_longest_duration') | float(0) %}
+              {% set avg = states('input_number.cat_toilet_avg_longest_duration') | float(0) %}
+              {% if avg == 0 %}{{ today }}{% else %}{{ (0.3 * today + 0.7 * avg) | round(1) }}{% endif %}
+
     # Reset daily counter
     - action: counter.reset
       target:
@@ -185,6 +233,22 @@
         entity_id: input_number.cat_toilet_shortest_duration
       data:
         value: 0
+
+    # Reset longest duration
+    - action: input_number.set_value
+      target:
+        entity_id: input_number.cat_toilet_longest_duration
+      data:
+        value: 0
+
+    # Clear the new day's session slot (overwrites last week's stale data)
+    - action: input_text.set_value
+      target:
+        entity_id: >-
+          {% set days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] %}
+          input_text.cat_toilet_sessions_{{ days[now().weekday()] }}
+      data:
+        value: ""
 
     # Update date picker to today
     - action: input_datetime.set_datetime

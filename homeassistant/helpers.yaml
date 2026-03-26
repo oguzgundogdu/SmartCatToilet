@@ -36,6 +36,24 @@ input_number:
     unit_of_measurement: s
     icon: mdi:timer-outline
 
+  cat_toilet_longest_duration:
+    name: Cat Toilet Longest Duration
+    min: 0
+    max: 86400
+    step: 1
+    mode: slider
+    unit_of_measurement: s
+    icon: mdi:timer-alert-outline
+
+  cat_toilet_avg_longest_duration:
+    name: Cat Toilet Avg Longest Duration
+    min: 0
+    max: 86400
+    step: 0.1
+    mode: slider
+    unit_of_measurement: s
+    icon: mdi:chart-timeline-variant
+
   cat_toilet_avg_daily_visits:
     name: Cat Toilet Avg Daily Visits
     min: 0
@@ -60,6 +78,56 @@ input_text:
     max: 255
     mode: text
     icon: mdi:database
+
+  # 7 rotating session logs — one per weekday, overwritten weekly
+  cat_toilet_sessions_monday:
+    name: Cat Toilet Sessions Monday
+    min: 0
+    max: 255
+    mode: text
+    icon: mdi:format-list-bulleted
+
+  cat_toilet_sessions_tuesday:
+    name: Cat Toilet Sessions Tuesday
+    min: 0
+    max: 255
+    mode: text
+    icon: mdi:format-list-bulleted
+
+  cat_toilet_sessions_wednesday:
+    name: Cat Toilet Sessions Wednesday
+    min: 0
+    max: 255
+    mode: text
+    icon: mdi:format-list-bulleted
+
+  cat_toilet_sessions_thursday:
+    name: Cat Toilet Sessions Thursday
+    min: 0
+    max: 255
+    mode: text
+    icon: mdi:format-list-bulleted
+
+  cat_toilet_sessions_friday:
+    name: Cat Toilet Sessions Friday
+    min: 0
+    max: 255
+    mode: text
+    icon: mdi:format-list-bulleted
+
+  cat_toilet_sessions_saturday:
+    name: Cat Toilet Sessions Saturday
+    min: 0
+    max: 255
+    mode: text
+    icon: mdi:format-list-bulleted
+
+  cat_toilet_sessions_sunday:
+    name: Cat Toilet Sessions Sunday
+    min: 0
+    max: 255
+    mode: text
+    icon: mdi:format-list-bulleted
 
 counter:
   cat_toilet_daily_count:

@@ -1,0 +1,154 @@
+# Cat Toilet - Lovelace Dashboard
+# To import: HA → Settings → Dashboards → Add Dashboard → select "Cat Toilet"
+# Then Edit Dashboard → Raw Configuration Editor → paste this content
+
+title: Cat Toilet
+views:
+  - title: Overview
+    path: overview
+    icon: mdi:cat
+    cards:
+      # --- Current Status ---
+      - type: entities
+        title: Current Status
+        icon: mdi:cat
+        entities:
+          - entity: input_datetime.cat_toilet_last_entered
+            name: Last Entered
+            icon: mdi:login
+          - entity: input_datetime.cat_toilet_last_exited
+            name: Last Exited
+            icon: mdi:logout
+          - entity: input_number.cat_toilet_last_duration
+            name: Last Duration
+            icon: mdi:timer
+          - entity: counter.cat_toilet_daily_count
+            name: Visits Today
+            icon: mdi:counter
+
+      # --- Date Picker ---
+      - type: entities
+        title: Browse Sessions
+        entities:
+          - entity: input_datetime.cat_toilet_date_picker
+            name: Select Date
+            icon: mdi:calendar-search
+
+      # --- Sessions for Selected Date ---
+      - type: markdown
+        title: Sessions
+        content: >-
+          {% set days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] %}
+          {% set day_labels = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] %}
+          {% set selected = states('input_datetime.cat_toilet_date_picker') %}
+          {% set sel_date = strptime(selected, '%Y-%m-%d') %}
+          {% set today = now().replace(hour=0, minute=0, second=0, microsecond=0) %}
+          {% set diff = (today.date() - sel_date.date()).days %}
+          {% if diff < 0 %}
+          *Cannot show future dates.*
+          {% elif diff > 6 %}
+          *Session details are only stored for the last 7 days.*
+          {% else %}
+          {% set wd = sel_date.weekday() %}
+          **{{ day_labels[wd] }}, {{ selected }}**
+          {% set raw = states('input_text.cat_toilet_sessions_' ~ days[wd]) %}
+          {% if raw in ['unknown', '', 'None'] %}
+
+          *No sessions recorded on this day.*
+          {% else %}
+
+          | # | Time | Duration |
+          |---|------|----------|
+          {% set sessions = raw.split(',') %}
+          {% for s in sessions %}
+          {% set parts = s.split(':') %}
+          {% if parts | length == 2 %}
+          {% set t = parts[0] %}
+          {% set d = parts[1] | int(0) %}
+          {% set mins = (d // 60) %}
+          {% set secs = (d % 60) %}
+          | {{ loop.index }} | {{ t[:2] }}:{{ t[2:] }} | {% if mins > 0 %}{{ mins }}m {{ secs }}s{% else %}{{ secs }}s{% endif %} |
+          {% endif %}
+          {% endfor %}
+          {% endif %}
+          {% endif %}
+
+      # --- Today's Stats ---
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: counter.cat_toilet_daily_count
+            name: Visits Today
+            icon: mdi:counter
+          - type: entity
+            entity: input_number.cat_toilet_shortest_duration
+            name: Shortest Today
+            icon: mdi:timer-outline
+          - type: entity
+            entity: input_number.cat_toilet_longest_duration
+            name: Longest Today
+            icon: mdi:timer-alert-outline
+          - type: entity
+            entity: input_number.cat_toilet_avg_daily_visits
+            name: Daily Average
+            icon: mdi:chart-line
+
+      # --- Duration History (HA built-in recorder) ---
+      - type: history-graph
+        title: Session Durations (Last 48h)
+        hours_to_show: 48
+        entities:
+          - entity: input_number.cat_toilet_last_duration
+            name: Duration
+
+      # --- Visit Count History ---
+      - type: history-graph
+        title: Daily Visit Count
+        hours_to_show: 48
+        entities:
+          - entity: counter.cat_toilet_daily_count
+            name: Visits
+
+      # --- 14-Day History ---
+      - type: markdown
+        title: 14-Day History
+        content: >-
+          {% set raw = states('input_text.cat_toilet_history') %}
+          {% if raw in ['unknown', '', 'None'] %}
+          *No history available yet.*
+          {% else %}
+          | Date | Visits | Shortest | Longest |
+          |------|--------|----------|---------|
+          {% set entries = raw.split(',') %}
+          {% for e in entries %}
+          {% set parts = e.split(':') %}
+          {% if parts | length >= 3 %}
+          {% set month = parts[0][:2] %}
+          {% set day = parts[0][2:] %}
+          {% set visits = parts[1] %}
+          {% set shortest = parts[2] | int(0) %}
+          {% set longest = parts[3] | int(0) if parts | length >= 4 else 0 %}
+          {% set s_mins = (shortest // 60) %}
+          {% set s_secs = (shortest % 60) %}
+          {% set l_mins = (longest // 60) %}
+          {% set l_secs = (longest % 60) %}
+          | {{ month }}/{{ day }} | {{ visits }} | {% if shortest == 0 %}-{% elif s_mins > 0 %}{{ s_mins }}m {{ s_secs }}s{% else %}{{ s_secs }}s{% endif %} | {% if longest == 0 %}-{% elif l_mins > 0 %}{{ l_mins }}m {{ l_secs }}s{% else %}{{ l_secs }}s{% endif %} |
+          {% endif %}
+          {% endfor %}
+          {% endif %}
+
+      # --- Averages & Trends ---
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: input_number.cat_toilet_avg_daily_visits
+            name: Avg Daily Visits
+            icon: mdi:chart-line
+          - type: entity
+            entity: input_number.cat_toilet_avg_shortest_duration
+            name: Avg Shortest
+            icon: mdi:chart-timeline-variant
+          - type: entity
+            entity: input_number.cat_toilet_avg_longest_duration
+            name: Avg Longest
+            icon: mdi:timer-alert-outline
