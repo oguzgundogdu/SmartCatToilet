@@ -50,15 +50,17 @@ views:
           *Session details are only stored for the last 7 days.*
           {% else %}
           {% set wd = sel_date.weekday() %}
-          **{{ day_labels[wd] }}, {{ selected }}**
+          <h3 style="margin:0 0 8px">{{ day_labels[wd] }}, {{ selected }}</h3>
           {% set raw = states('input_text.cat_toilet_sessions_' ~ days[wd]) %}
           {% if raw in ['unknown', '', 'None'] %}
-
-          *No sessions recorded on this day.*
+          <p style="opacity:0.6">No sessions recorded on this day.</p>
           {% else %}
-
-          | # | Time | Duration |
-          |---|------|----------|
+          <table style="width:100%;border-collapse:collapse">
+          <tr style="border-bottom:2px solid var(--divider-color,#444)">
+          <th style="padding:8px 12px;text-align:left">#</th>
+          <th style="padding:8px 12px;text-align:left">Time</th>
+          <th style="padding:8px 12px;text-align:left">Duration</th>
+          </tr>
           {% set sessions = raw.split(',') %}
           {% for s in sessions %}
           {% set parts = s.split(':') %}
@@ -67,9 +69,14 @@ views:
           {% set d = parts[1] | int(0) %}
           {% set mins = (d // 60) %}
           {% set secs = (d % 60) %}
-          | {{ loop.index }} | {{ t[:2] }}:{{ t[2:] }} | {% if mins > 0 %}{{ mins }}m {{ secs }}s{% else %}{{ secs }}s{% endif %} |
+          <tr style="border-bottom:1px solid var(--divider-color,#333)">
+          <td style="padding:6px 12px">{{ loop.index }}</td>
+          <td style="padding:6px 12px">{{ t[:2] }}:{{ t[2:] }}</td>
+          <td style="padding:6px 12px">{% if mins > 0 %}{{ mins }}m {{ secs }}s{% else %}{{ secs }}s{% endif %}</td>
+          </tr>
           {% endif %}
           {% endfor %}
+          </table>
           {% endif %}
           {% endif %}
 
@@ -115,26 +122,37 @@ views:
         content: >-
           {% set raw = states('input_text.cat_toilet_history') %}
           {% if raw in ['unknown', '', 'None'] %}
-          *No history available yet.*
+          <p style="opacity:0.6">No history available yet.</p>
           {% else %}
-          | Date | Visits | Shortest | Longest |
-          |------|--------|----------|---------|
+          <table style="width:100%;border-collapse:collapse">
+          <tr style="border-bottom:2px solid var(--divider-color,#444)">
+          <th style="padding:8px 12px;text-align:left">Date</th>
+          <th style="padding:8px 12px;text-align:center">Visits</th>
+          <th style="padding:8px 12px;text-align:right">Shortest</th>
+          <th style="padding:8px 12px;text-align:right">Longest</th>
+          </tr>
           {% set entries = raw.split(',') %}
           {% for e in entries %}
           {% set parts = e.split(':') %}
           {% if parts | length >= 3 %}
           {% set month = parts[0][:2] %}
           {% set day = parts[0][2:] %}
-          {% set visits = parts[1] %}
+          {% set visits = parts[1] | int(0) %}
           {% set shortest = parts[2] | int(0) %}
           {% set longest = parts[3] | int(0) if parts | length >= 4 else 0 %}
           {% set s_mins = (shortest // 60) %}
           {% set s_secs = (shortest % 60) %}
           {% set l_mins = (longest // 60) %}
           {% set l_secs = (longest % 60) %}
-          | {{ month }}/{{ day }} | {{ visits }} | {% if shortest == 0 %}-{% elif s_mins > 0 %}{{ s_mins }}m {{ s_secs }}s{% else %}{{ s_secs }}s{% endif %} | {% if longest == 0 %}-{% elif l_mins > 0 %}{{ l_mins }}m {{ l_secs }}s{% else %}{{ l_secs }}s{% endif %} |
+          <tr style="border-bottom:1px solid var(--divider-color,#333)">
+          <td style="padding:6px 12px">{{ month }}/{{ day }}</td>
+          <td style="padding:6px 12px;text-align:center">{{ visits }}</td>
+          <td style="padding:6px 12px;text-align:right">{% if shortest == 0 %}-{% elif s_mins > 0 %}{{ s_mins }}m {{ s_secs }}s{% else %}{{ s_secs }}s{% endif %}</td>
+          <td style="padding:6px 12px;text-align:right">{% if longest == 0 %}-{% elif l_mins > 0 %}{{ l_mins }}m {{ l_secs }}s{% else %}{{ l_secs }}s{% endif %}</td>
+          </tr>
           {% endif %}
           {% endfor %}
+          </table>
           {% endif %}
 
       # --- Averages & Trends ---
