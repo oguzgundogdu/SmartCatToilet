@@ -15,23 +15,6 @@
       id: cat_toilet
   conditions: []
   actions:
-    # --- CAT_ENTERED event ---
-    - if:
-        - condition: template
-          value_template: "{{ trigger.json.event == 'CAT_ENTERED' }}"
-      then:
-        - action: input_datetime.set_datetime
-          target:
-            entity_id: input_datetime.cat_toilet_last_entered
-          data:
-            datetime: >-
-              {{ (trigger.json.ts | int(0))
-                 | timestamp_custom('%Y-%m-%d %H:%M:%S', true) }}
-        - action: notify.notify
-          data:
-            title: Cat Toilet
-            message: Cat entered.
-
     # --- CAT_SESSION event ---
     - if:
         - condition: template
