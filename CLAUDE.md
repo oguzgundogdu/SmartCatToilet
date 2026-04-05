@@ -12,6 +12,7 @@ ESP32-based cat litter box sensor that detects entry (reed switch, GPIO 32) and 
 pio run                  # Build firmware
 pio run -t upload        # Build and flash to ESP32
 pio device monitor       # Serial monitor (115200 baud)
+pio run -t upload && pio device monitor  # Flash + monitor in one shot
 ```
 
 ## Configuration
@@ -25,16 +26,16 @@ build_flags =
   -DHA_WEBHOOK_URL=\"http://HA_IP:8123/api/webhook/cat_toilet\"
 ```
 
-ESP-IDF SDK settings are in `sdkconfig` (referenced via `platformio.ini` cmake args). IDE support via `.clangd` which reads the PlatformIO compilation database and injects placeholder build flags.
+ESP-IDF SDK settings are in `sdkconfig` (referenced via `platformio.ini` cmake args). IDE support via `.clangd` which reads the PlatformIO compilation database and injects placeholder build flags. `generate_compile_commands.py` (pre-build script in platformio.ini) regenerates `compile_commands.json` for clangd on each build.
 
 ## Architecture
 
-**Firmware** (`src/main.cpp`): Single-file Arduino/ESP-IDF application. Flow:
+**Firmware** (`src/main.cpp`): Single-file Arduino/ESP-IDF hybrid application (uses Arduino APIs + ESP-IDF sleep/wifi primitives). Flow:
 1. Deep sleep → reed switch wakes ESP32 (ext0 on GPIO 32, active LOW) → records `millis()` as entry reference (no WiFi)
 2. Light sleeps in ~500ms intervals polling IR exit sensor (GPIO 33, active LOW), with periodic LED blink
 3. On exit (or 5-min safety timeout): single WiFi connection → NTP sync → compute `entered_at` by subtracting `millis()` duration from current epoch → POST `CAT_SESSION` to HA → deep sleep
 
-Only two webhook events: `CAT_SESSION` (per visit: `entered_at`, `exited_at`, `duration_sec` as UNIX epochs/seconds) and `DEVICE_STARTED` (on power-on/reset only, with `ts`).
+Only two webhook events: `CAT_SESSION` (per visit: `entered_at`, `exited_at`, `duration_sec` as UNIX epochs/seconds) and `DEVICE_STARTED` (on genuine power-on or external reset only, guarded by `esp_reset_reason()` to avoid spurious notifications from brownout/watchdog resets after WiFi activity).
 
 **Home Assistant** (`homeassistant/`):
 - `automations.yaml` — two automations:
@@ -61,3 +62,5 @@ When modifying templates that read/write these formats, keep both the automation
 - Entity naming convention in HA: `input_*.cat_toilet_*`, `counter.cat_toilet_*`
 - Anomaly threshold: `avg + max(avg × 0.5, 5)` — adaptive buffer that avoids false positives at low visit counts
 - After editing HA YAML files, push changes to the live Home Assistant instance (automations via REST API, dashboards via WebSocket)
+- `DEVICE_STARTED` is only sent for `ESP_RST_POWERON` / `ESP_RST_EXT` reset reasons — brownouts and watchdog resets silently return to deep sleep
+- Note: `README.md` still references a separate `CAT_ENTERED` webhook event that was removed; the firmware now sends only `CAT_SESSION` and `DEVICE_STARTED`

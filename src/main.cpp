@@ -212,8 +212,14 @@ void setup() {
     Serial.println("Waiting for CAT_EXITED...");
     waitingForExit = true;
   } else {
-    Serial.println("BOOT: power on / reset");
-    sendDeviceStarted();
+    const esp_reset_reason_t resetReason = esp_reset_reason();
+    if (resetReason == ESP_RST_POWERON || resetReason == ESP_RST_EXT) {
+      Serial.println("BOOT: power on / reset");
+      sendDeviceStarted();
+    } else {
+      Serial.printf("BOOT: non-entry wake (reset reason=%d), skipping notification\n",
+                     resetReason);
+    }
     goToDeepSleep();
   }
 }
