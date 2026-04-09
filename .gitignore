@@ -5,3 +5,8 @@ build/*
 .cache/*
 .claude
 secrets.ini
+
+# Classifier artifacts
+classifier/data/
+classifier/model/*.tflite
+classifier/model/*.keras
