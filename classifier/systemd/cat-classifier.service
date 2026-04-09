@@ -1,0 +1,18 @@
+[Unit]
+Description=Cat Toilet Classifier Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ogugun
+WorkingDirectory=/home/ogugun/cat-classifier
+ExecStart=/home/ogugun/cat-classifier/venv/bin/uvicorn app:app --host 0.0.0.0 --port 5000
+Environment=MODEL_PATH=/home/ogugun/cat-classifier/model/cat_model.tflite
+Environment=HA_WEBHOOK_URL=http://192.168.1.110:8123/api/webhook/cat_toilet
+Environment=TRAINING_DATA_DIR=/home/ogugun/cat-classifier/data
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
