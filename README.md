@@ -13,17 +13,29 @@ The device uses two sensors and deep sleep to minimize power consumption:
 
 ```
 [Deep Sleep] --(reed triggered)--> [Wake Up]
-    --> POST CAT_ENTERED to Home Assistant (best-effort, short timeout)
+    --> Record entry time (no WiFi yet, to save power)
     --> Wait for exit (LED blinks while waiting)
-    --> IR sensor triggered
-    --> POST CAT_SESSION to Home Assistant (reliable, longer timeout)
+    --> IR sensor triggered (or 5-min safety timeout)
+    --> POST CAT_SESSION to Home Assistant (single WiFi connection)
     --> [Deep Sleep]
 ```
+
+WiFi is only used once per session, at exit, to minimize battery drain.
 
 Each session payload includes:
 - `entered_at` — UNIX epoch timestamp
 - `exited_at` — UNIX epoch timestamp
 - `duration_sec` — time spent in the litter box
+
+### Re-entry Cancellation
+
+If the reed switch triggers **again** while a session is in progress, the
+session is treated as invalid (e.g., the cat backed out and re-entered, or
+sensor bounce). The device silently discards it — **no webhook is sent** — and
+returns to deep sleep. Since the reed pin is already LOW at wake-up, it must
+first release (go HIGH) before another LOW counts as a genuine re-entry. The
+5-minute safety timeout still reports a session; only an explicit re-entry
+discards it.
 
 Timestamps are synced via NTP (`pool.ntp.org`, `time.nist.gov`, `time.google.com`).
 
@@ -80,14 +92,10 @@ pio device monitor
 
 ## Home Assistant Integration
 
-Create a webhook automation in Home Assistant to receive the events. Example payloads:
+Create a webhook automation in Home Assistant to receive the events. The
+firmware sends two event types:
 
-**Entry event:**
-```json
-{"event": "CAT_ENTERED", "ts": 1700000000}
-```
-
-**Session event:**
+**Session event** (one per visit, sent at exit):
 ```json
 {
   "event": "CAT_SESSION",
@@ -95,6 +103,11 @@ Create a webhook automation in Home Assistant to receive the events. Example pay
   "exited_at": 1700000120,
   "duration_sec": 120
 }
+```
+
+**Device started event** (on genuine power-on / reset only):
+```json
+{"event": "DEVICE_STARTED", "ts": 1700000000}
 ```
 
 You can use these to track litter box usage frequency, duration, and timing in Home Assistant dashboards.

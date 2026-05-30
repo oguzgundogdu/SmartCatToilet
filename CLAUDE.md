@@ -65,4 +65,3 @@ When modifying templates that read/write these formats, keep both the automation
 - After editing HA YAML files, push changes to the live Home Assistant instance (automations via REST API, dashboards via WebSocket)
 - `DEVICE_STARTED` is only sent for `ESP_RST_POWERON` / `ESP_RST_EXT` reset reasons — brownouts and watchdog resets silently return to deep sleep
 - A re-entry during an active session cancels it silently (no `CAT_SESSION` reported); the entry pin must release to HIGH before another LOW counts as re-entry, since it is already LOW at wakeup. The 5-min safety timeout still reports a session — only an explicit re-entry discards it
-- Note: `README.md` still references a separate `CAT_ENTERED` webhook event that was removed; the firmware now sends only `CAT_SESSION` and `DEVICE_STARTED`
