@@ -32,8 +32,9 @@ ESP-IDF SDK settings are in `sdkconfig` (referenced via `platformio.ini` cmake a
 
 **Firmware** (`src/main.cpp`): Single-file Arduino/ESP-IDF hybrid application (uses Arduino APIs + ESP-IDF sleep/wifi primitives). Flow:
 1. Deep sleep → reed switch wakes ESP32 (ext0 on GPIO 32, active LOW) → records `millis()` as entry reference (no WiFi)
-2. Light sleeps in ~500ms intervals polling IR exit sensor (GPIO 33, active LOW), with periodic LED blink
+2. Light sleeps in ~500ms intervals polling IR exit sensor (GPIO 33, active LOW) and the reed switch for re-entry, with periodic LED blink
 3. On exit (or 5-min safety timeout): single WiFi connection → NTP sync → compute `entered_at` by subtracting `millis()` duration from current epoch → POST `CAT_SESSION` to HA → deep sleep
+4. Re-entry cancellation: if the reed switch triggers again mid-session, the session is silently discarded — no WiFi, no webhook — and the device returns to deep sleep. Because the entry pin is already LOW at wakeup (it is the ext0 source), it must first release to HIGH before a subsequent LOW counts as a genuine re-entry (this also debounces the initial trigger).
 
 Only two webhook events: `CAT_SESSION` (per visit: `entered_at`, `exited_at`, `duration_sec` as UNIX epochs/seconds) and `DEVICE_STARTED` (on genuine power-on or external reset only, guarded by `esp_reset_reason()` to avoid spurious notifications from brownout/watchdog resets after WiFi activity).
 
@@ -63,4 +64,5 @@ When modifying templates that read/write these formats, keep both the automation
 - Anomaly threshold: `avg + max(avg × 0.5, 5)` — adaptive buffer that avoids false positives at low visit counts
 - After editing HA YAML files, push changes to the live Home Assistant instance (automations via REST API, dashboards via WebSocket)
 - `DEVICE_STARTED` is only sent for `ESP_RST_POWERON` / `ESP_RST_EXT` reset reasons — brownouts and watchdog resets silently return to deep sleep
+- A re-entry during an active session cancels it silently (no `CAT_SESSION` reported); the entry pin must release to HIGH before another LOW counts as re-entry, since it is already LOW at wakeup. The 5-min safety timeout still reports a session — only an explicit re-entry discards it
 - Note: `README.md` still references a separate `CAT_ENTERED` webhook event that was removed; the firmware now sends only `CAT_SESSION` and `DEVICE_STARTED`
