@@ -36,6 +36,11 @@ unsigned long lastBlinkMs = 0;
 
 unsigned long entryStartMs = 0;
 
+// Re-entry detection: the entry pin is already LOW at wakeup (that's what woke
+// us), so it must first release (go HIGH) before a fresh LOW counts as a new
+// entry. A re-entry mid-session invalidates the session — we report nothing.
+bool entryReleased = false;
+
 static bool connectWiFiWithTimeoutMs(unsigned long timeoutMs) {
   WiFi.mode(WIFI_STA);
   esp_wifi_set_max_tx_power(52); // ~13 dBm (down from 20 dBm default)
@@ -235,6 +240,22 @@ void loop() {
   if (now - entryStartMs >= MAX_AWAKE_MS) {
     Serial.println("TIMEOUT: no exit detected, sleeping.");
     sendSessionOnExit();
+    hasPendingEntry = false;
+    enteredEpoch = 0;
+    waitingForExit = false;
+    goToDeepSleep();
+  }
+
+  // Re-entry detection: if the entry sensor triggers again mid-session, the
+  // session is invalid (e.g. cat backed out and re-entered, or sensor bounce).
+  // Cancel it and report nothing.
+  const int entryLevel = digitalRead((int)ENTRY_PIN);
+  if (!entryReleased) {
+    if (entryLevel == HIGH) {
+      entryReleased = true; // entry sensor cleared; armed for re-entry
+    }
+  } else if (entryLevel == LOW) {
+    Serial.println("EVENT: RE-ENTRY — cancelling session, no report.");
     hasPendingEntry = false;
     enteredEpoch = 0;
     waitingForExit = false;
